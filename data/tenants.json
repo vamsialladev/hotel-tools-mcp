@@ -1,0 +1,4 @@
+{
+  "hg-demo": {"name": "Simulated hotel group (stages 0-8)", "properties": ["beach-resort", "mountain-lodge"]},
+  "hg-other": {"name": "A second simulated hotel group, used only to prove tenant isolation", "properties": ["city-hotel"]}
+}
