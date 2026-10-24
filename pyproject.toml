@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hotel-tools-mcp"
+version = "1.0.0"
+description = "Stage 7: an MCP server with the hotel group's tools, role-based access, tenant isolation and an audit log"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "Vamsi Alla" }]
+dependencies = ["mcp~=2.3", "rank-bm25==0.2.2", "numpy~=2.5", "pypdf~=6.21"]
+
+[project.scripts]
+hotel-tools-mcp = "hotel_tools.server:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+hotel_tools = ["policy/SOURCE.json"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["src/hotel_tools/policy/retrieve.py", "src/hotel_tools/policy/ingest.py", "src/hotel_tools/policy/pii.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+
+[tool.coverage.run]
+source = ["src/hotel_tools", "eval", "scripts"]
+# The copied stage 1 modules are tested in stage 1 (and exercised here through search_policy).
+omit = ["src/hotel_tools/policy/*", "scripts/make_captions.py", "scripts/sync_policy.py"]

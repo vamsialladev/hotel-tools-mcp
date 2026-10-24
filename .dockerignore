@@ -1,0 +1,10 @@
+.git
+.venv
+.env
+.env.*
+.hotel-mcp
+__pycache__
+.pytest_cache
+.ruff_cache
+data/policy_index
+docs/video

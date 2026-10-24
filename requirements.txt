@@ -1,0 +1,4 @@
+mcp~=2.3
+rank-bm25==0.2.2
+numpy~=2.5
+pypdf~=6.21
