@@ -1,0 +1,24 @@
+{
+  "project": "hotel-ops-assistant",
+  "version": "1.6.0",
+  "commit": "392e1b5c7fdc71c874d2bb6fd1f542d714a9bf0c",
+  "files": {
+    "retrieve.py": "2cacc7bd0f7defbc6a73f134dc2e04494479bf9ff149083716ce1c6cacbe86df",
+    "ingest.py": "87a6732a957e29ce7cc6e3239abd3446541bf4a8426544a6060b7a7fcf0c1ff7",
+    "pii.py": "1ffa85e412ab24f2719f8f4dc489dd3699095d9ad4ad3cb162a1178727a431af",
+    "data/policy/raw/beach-resort/fire_safety_scan.pdf": "9cd9386a6803704820030fd155b1c98c947341d755f0af3d5fe9ec48d051c6da",
+    "data/policy/raw/beach-resort/guest_handbook.md": "fad16e3b83fa9eefd0907cfe8aca299210a8b356b89a980331228ada27b17bb5",
+    "data/policy/raw/beach-resort/policies.md": "2b9dcca13010380c554164f3c4be8938d44104abbb90a07ceb3bb97189cf6afa",
+    "data/policy/raw/beach-resort/policies_2024_OLD.md": "cde24d091ce490007e47bd0375b77f451e07581cef981ec84f3bd04947080418",
+    "data/policy/raw/beach-resort/restaurant_menu.pdf": "1496056488c2ca41f188ccb40b144f0f07860090b9a6cf909f6d930d55e9041a",
+    "data/policy/raw/beach-resort/spa_menu.md": "103fc337d9450487183d81deb4ce68e0b567060abb474bdf15b31de24d9db0a2",
+    "data/policy/raw/mountain-lodge/events_weddings.pdf": "cdfb10e4f515bdec9783708a7b22cd494bb3d3676f9aa3adbbbd343c8cd34eb9",
+    "data/policy/raw/mountain-lodge/front_desk_notes.txt": "72c859bcfb015d674389d81cfe4f307b866de25230ae1c831629689039c2e0bc",
+    "data/policy/raw/mountain-lodge/guest_handbook.md": "9c2bd66d84ee30b90d6b42dffebba3365360e49caf4b06c10ac49c8a304841c3",
+    "data/policy/raw/mountain-lodge/policies.md": "e58027fd20ff1c537f94fd112391347ddc253b0fa9ef320821aab9468f11cf28",
+    "data/policy/raw/shared/brand_standards.md": "19f5dff9f4d8726592cf39de3da1f7fd2eb64ba7180f09ea259590666a9d3126",
+    "data/policy/raw/shared/guest_handbook.md": "22cd527f7197b518a3aa3160f0b6cca896444bd66517dba970faf321b0c3d5d4",
+    "data/policy/raw/shared/housekeeping_sop.md": "63637c485baf1f16fd762892e736d883e578db07ca703ce742e165f44b2f7a0a",
+    "data/policy/raw/shared/loyalty_program.md": "b6e1fe68933b36a1c2c09af5a6aef5af296be71e29574aff60ce5764f7e07a61"
+  }
+}
