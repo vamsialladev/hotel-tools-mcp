@@ -26,6 +26,10 @@ jobs:
         run: |
           python -m eval.run_eval --runs 3 --min-pass 1.0 --no-report
           python -m eval.run_eval --split heldout --runs 3 --min-pass 1.0 --no-report
+      - name: "Gate: the saved web demo agent runs re-score to the same verdicts (no API)"
+        run: |
+          python -m eval.run_agent_eval --rescore eval/reports/agent-2026-10-24-dev.jsonl
+          python -m eval.run_agent_eval --rescore eval/reports/agent-2026-10-24-heldout.jsonl
       - name: The copy of stage 1's search matches its pinned commit
         run: python scripts/sync_policy.py --check
       - name: Dependency audit
