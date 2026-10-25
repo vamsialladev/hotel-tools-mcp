@@ -16,6 +16,10 @@ Email <vamsialla.dev@gmail.com> with steps to reproduce. Please don't open a pub
 | Personal data | Emails or phones written to the audit log | Arguments stored as a hash; details redacted | `test_every_call_is_audited_with_hashed_args_and_no_personal_data` |
 | Keys | A key leaks from a repo or a log | Only hashes stored; `.hotel-mcp/` and `.env*` git-ignored; gitleaks in CI; errors never echo a key | `test_server_refuses_to_start_without_a_valid_key` |
 | Availability / cost | A client loops on a tool | Per-key rate limit by role | `test_rate_limit_blocks_and_is_audited` |
+| Web demo spend | A visitor (or a script) runs up the API bill | 20 questions per visit, 6 a minute, 300 a day and $1.00 a day across visitors, checked before the model is called; at most 6 model turns per message; a monthly spend limit in the Anthropic Console | `test_limits`, `test_daily_cap_blocks_before_the_model` |
+| Web demo visitors | One visitor sees another's requests or audit log | A private runtime folder per browser session | `test_switching_role_starts_a_new_conversation_with_that_roles_tools` |
+| Web demo logs and links | Names, emails or booking IDs written to the log or a share link | Stage 1's redaction plus the guest names tools returned; booking IDs become pseudonyms; tool results are never logged or shared | `test_request_log_and_share_remove_personal_data` |
+| Web demo promises | The model says a credit is approved when it's pending | The tool result is the only source of status; the eval's `no_promise` check on every credit and request case | `eval/agent_cases.jsonl`, 100% |
 
 ## OWASP Top 10 for LLM applications (2025)
 
@@ -30,6 +34,6 @@ Email <vamsialla.dev@gmail.com> with steps to reproduce. Please don't open a pub
 | LLM07 | System prompt leakage | No secrets in server instructions or results |
 | LLM08 | Vector and embedding weaknesses | Keyword search filtered by property and tenant; no shared vector store across tenants |
 | LLM09 | Misinformation | Policy answers come with their source passages; the server adds no generated text |
-| LLM10 | Unbounded consumption | Rate limits per key; result sizes capped |
+| LLM10 | Unbounded consumption | Rate limits per key; result sizes capped; the web demo adds per-visit, per-minute and daily caps and a 6-turn limit |
 
 Known limitations: demo API keys (docs/AUTH.md), pattern-based injection guard, local files rather than a database.

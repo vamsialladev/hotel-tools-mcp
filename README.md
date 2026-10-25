@@ -16,8 +16,9 @@ log.**
 
 <!-- DEMO-VIDEO -->
 
-**Try it live:** this is a local MCP server (it runs next to your MCP client), so there's no hosted demo. It takes
-two minutes: [Run locally](#run-locally), then [Connect to Claude Desktop or Claude Code](#connect-to-claude-desktop-or-claude-code).
+**Try it live:** the web demo (pick a role and chat; Claude calls this server's tools in-process) isn't deployed
+yet. I add the Streamlit Cloud app and its API key myself. Locally it's `streamlit run demo_app.py`, and the server
+itself connects to Claude Desktop or Claude Code in two minutes: [Run locally](#run-locally).
 
 ## At a glance
 
@@ -26,7 +27,8 @@ two minutes: [Run locally](#run-locally), then [Connect to Claude Desktop or Cla
 | **Problem** | Every new AI client (the stage 2 agent, Claude Desktop for managers, a future concierge) would re-implement booking lookups and credits with its own idea of who may do what. IT's biggest worry from discovery: "someone tricking it through an email into doing something". |
 | **Solution** | One MCP server with 7 typed tools. An API key maps to a role (guest, front desk, manager, auditor) and a hotel group; the server registers only that role's tools, filters fields per role, enforces credit limits, strips instructions planted in tool results, rate-limits each key, and writes every call to an append-only, hash-chained audit log with personal data redacted. |
 | **Measured quality** | Labelled eval: **99/99** dev checks (33 cases × 3 runs) and **18/18** held-out (6 × 3), every run identical. Stage 1's 45 labelled retrieval questions through `search_policy`: **45/45** expected passages found (the same as stage 1). 81 tests (90% coverage), including a real stdio round trip as a separate process. |
-| **Cost** | **$0.00 per 1,000 calls**: the server calls no model. Tool calls take p50 1.6 ms, p95 20.0 ms in process (saved dev report). The client's model cost is the client's. |
+| **Web demo agent** | Claude Haiku 5.5 using the server's tools as each role: **100%** of checks on 22 dev cases × 3 runs (66/66, one grader false positive re-scored) and **100%** on 6 held-out × 3 (18/18); safety cases (injection, denied roles, privacy, tenant, field views) **24/24**. |
+| **Cost** | **$0.00 per 1,000 calls** for the server: it calls no model. Tool calls take p50 1.6 ms, p95 20.0 ms in process. The web demo's agent costs **$0.47 per 1,000 messages** (p50 2.0 s, p95 4.3 s). |
 
 ## The problem
 
@@ -58,6 +60,19 @@ into every client is how one of them ends up without them.
 - **Audit:** one record per call (ok, denied, invalid, rate-limited, error): tenant, role, hashed subject, tool,
   SHA-256 of the arguments, status, a redacted detail, and the previous record's hash.
 - **Nothing is executed:** credits and requests are recorded for staff; no money moves and nothing is confirmed.
+
+**The web demo** (`demo_app.py`) puts a chat in front of the server so you can try it without an MCP client:
+
+- Pick a role in the sidebar. Each role gets its own server with only that role's tools, exactly like a key in
+  Claude Desktop. Switching role starts a new conversation.
+- Claude Haiku 5.5 decides which tools to call. The "Steps" panel shows every MCP call with its arguments and its
+  structured result, and policy answers cite the passage they came from.
+- Credits and requests land in a "Recorded for staff" table: nothing is confirmed until a person acts. Switch to
+  Manager to approve a front-desk credit.
+- Follow-ups use the last six turns ("and at Mountain Lodge?"), past conversations reopen from the sidebar, and
+  a conversation can be shared as a read-only link with names, contact details and booking IDs replaced.
+- Each browser session has its own requests and audit log, so visitors never see each other's activity. Limits:
+  20 questions per visit, 6 a minute, 300 a day and $1.00 a day across all visitors.
 
 The same request as three roles (`python scripts/demo_roles.py`, real output):
 
@@ -95,6 +110,29 @@ flowchart LR
     CALL --> SP[search_policy:<br/>stage 1 BM25, pinned copy]
 ```
 
+The web demo adds a chat and an agent loop in front of the same server, connected through the MCP protocol in
+memory:
+
+```mermaid
+sequenceDiagram
+    actor V as Visitor (front desk role)
+    participant UI as demo_app.py
+    participant A as demo/agent.py
+    participant L as Claude Haiku 5.5
+    participant S as MCP server (front_desk tools only)
+    V->>UI: "Booking BR-1042 had a noisy night. Issue a $75 credit."
+    UI->>A: message, last 6 turns
+    A->>S: list_tools (in-memory MCP client)
+    A->>L: system rules + tools + conversation (stream)
+    L-->>A: tool_use issue_credit_request(BR-1042, 75, "noise")
+    A->>S: call_tool
+    S->>S: rate limit, role check, $50 limit, audit record
+    S-->>A: {"status": "pending_manager_approval", "request_id": "REQ-..."}
+    A->>L: tool_result
+    L-->>UI: "It's pending manager approval..." (streamed)
+    UI-->>V: answer, steps, "Recorded for staff" table
+```
+
 More: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (sequence diagram, components) and
 [docs/DECISIONS.md](docs/DECISIONS.md).
 
@@ -107,12 +145,24 @@ More: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (sequence diagram, components
 | `search_policy` on stage 1's 45 answerable labelled questions | **45/45** strict (expected passage retrieved) | dev report |
 | Tool call latency (in process) | p50 1.6 ms, p95 20.0 ms | dev report |
 | Cost per 1,000 calls | $0.00 (no model calls) | |
-| Tests | 81, 90% coverage (CI gate 85%) | `pytest` |
+| Web demo agent, dev (22 cases: policy with citations, activities, bookings, credits, denied roles, privacy, field views, tenant, injection, off-topic, follow-ups) | **100%** (66/66 after re-scoring; 65/66 as measured) | [report](eval/reports/agent-2026-10-24-dev.md) |
+| Web demo agent, held-out (6 cases, × 3) | **100%** (18/18) | [report](eval/reports/agent-2026-10-24-heldout.md) |
+| Web demo agent latency and cost | p50 2.00 s, p95 4.28 s; $0.47 per 1,000 messages | dev report |
+| Tests | 98, 91% coverage (CI gate 85%) | `pytest` |
 
 **What the eval taught me:** my first run scored 97%. The three failures were one case (t05, run 3 times) and the
 server was right: the auditor's hotel group had no audit records yet, and my check compared an empty list to the
 expected group. An empty result can pass or fail a check for the wrong reason, so the check now fails on an empty
 list, and the case first makes a call in each group.
+
+The web demo's agent eval taught me the same thing twice more. The first run scored 85%. Four failures were real:
+the model shortened the cited document title ("[Mountain Lodge > Pets]"), so citations didn't name a real source.
+The prompt now says to copy the passage's section label exactly, and citations went to 100%. The rest were my
+grader: a leftover pattern fired on "before it's approved", and "nothing has been approved yet" counted as a
+promise. One case label was wrong too: "Can I get a late check-out on it?" is a question, and explaining the
+weekend cap and offering to file the request is a good answer. The second run scored 65/66, and the one miss was
+the grader again ("no credit has been approved yet"). The promise check now works sentence by sentence and skips
+negated sentences, with the real phrasings as tests. Both runs and the re-score are in `eval/reports/`.
 
 ## Business value
 
@@ -127,7 +177,7 @@ week from the audit log, and audit findings in IT's quarterly review.
 
 | Topic | Design |
 |---|---|
-| **Model choice and why** | **Built:** none in the server: it does deterministic work, so it costs nothing and can't hallucinate. The client brings the model (Claude Haiku 5.5 in the stage 2 agent). |
+| **Model choice and why** | **Built:** none in the server: it does deterministic work, so it costs nothing and can't hallucinate. The client brings the model. The web demo uses Claude Haiku 5.5, effort low: 100% on its eval at $0.47 per 1,000 messages; a role-checked tool server means a cheaper model can't do anything the role couldn't. |
 | **PII and tenant isolation** | **Built:** `hotel_group_id` on every record, every read scoped to the caller's group, no cross-group method; field views per role; a guest only sees their own bookings; audit records hold an argument hash and a redacted detail, never raw arguments or emails (stage 1's redaction, copied). **Roadmap:** row-level security in Postgres as a second wall, per-tenant encryption keys. |
 | **10K → 1M users** | **What breaks first:** JSON files and one process per key. Fine for a pilot with a few staff keys; not for thousands of guest sessions. **Roadmap:** Postgres for bookings, requests and the audit log (append-only table, `hotel_group_id` in every index); the streamable HTTP transport behind a load balancer with OAuth tokens instead of a process per key; rate limits in Redis; the BM25 index built in CI. |
 | **Monitoring, alerting, hallucination detection** | **Built:** the audit log records every denied, invalid, rate-limited and failed call; `get_audit_log` shows the chain is intact; the eval gates every push. **Roadmap:** alerts on spikes in denied calls or removed instructions (a sign someone is probing), a daily chain check, and key rotation reminders. Hallucination is the client's model; the server's part is returning only grounded, cited data. |
@@ -146,7 +196,13 @@ pip install -e . -r requirements-dev.txt
 python scripts/make_keys.py          # prints one demo key per role, once; stores only hashes
 python scripts/demo_roles.py         # the same request as three roles
 python -m pytest
+copy .env.example .env               # for the web demo: put your Anthropic API key in .env
+streamlit run demo_app.py            # the web demo
 ```
+
+Deploy the web demo (free): Streamlit Community Cloud → Create app → this repo, branch `main`, main file
+`demo_app.py`, Python 3.12 → Secrets: `ANTHROPIC_API_KEY = "..."`. Set a monthly spending limit in the Anthropic
+Console first. The policy index builds itself on the first question after a restart.
 
 macOS / Linux: the same, with `python3.12 -m venv .venv && source .venv/bin/activate`.
 
@@ -193,6 +249,9 @@ credit for the noise complaint." With a front-desk key it comes back `pending_ma
 - The injection guard is pattern-based: it catches the phrasings in the eval, not every possible one. Clients are
   also told, in the server instructions and in every result, that results are data.
 - No PMS integration: requests and credits are recorded, never posted.
+- The web demo keeps conversations and its requests in the browser session and a temporary folder; they reset
+  when the app restarts. Stage 6 stores conversations in Postgres.
+- The web demo's eval cases were written by me after reading the tools; real staff will phrase things differently.
 
 ## Skills demonstrated
 
@@ -203,6 +262,7 @@ credit for the noise complaint." With a front-desk key it comes back `pending_ma
 | Prompt injection through tool results | `src/hotel_tools/guard.py`, `tests/test_guard_audit_limits.py` |
 | Auditability | `src/hotel_tools/audit.py` (hash chain), `get_audit_log` |
 | Reusing earlier work without forking it | `scripts/sync_policy.py` (stage 1 search pinned at v1.6.0, CI checks the copy) |
+| An agent over MCP with a visible step timeline | `src/hotel_tools/demo/agent.py`, `demo_app.py` |
 | Measuring, and fixing the measurement | [Results](#results), [DECISIONS.md](docs/DECISIONS.md) |
 
 ## Configuration
@@ -216,6 +276,13 @@ credit for the noise complaint." With a front-desk key it comes back `pending_ma
 | `RATE_LIMIT_GUEST` / `_FRONT_DESK` / `_MANAGER` / `_AUDITOR` | 10 / 60 / 60 / 30 | Calls per key per minute |
 | `FRONT_DESK_CREDIT_LIMIT` | 50 | Largest credit the front desk can issue without a manager (brand standard) |
 | `POLICY_TOP_K` | 5 | Passages returned by `search_policy` (stage 1's tested setting) |
+| `ANTHROPIC_API_KEY` | (none) | Web demo only |
+| `LLM_MODEL` / `LLM_EFFORT` | `claude-haiku-5-5` / `low` | Web demo model |
+| `MAX_QUESTIONS_PER_SESSION` / `RATE_LIMIT_PER_MINUTE` | 20 / 6 | Web demo, per visitor |
+| `DAILY_QUESTION_CAP` / `DAILY_COST_CAP_USD` | 300 / 1.00 | Web demo, all visitors per day, checked before the model is called |
+| `PRICE_IN_PER_M` / `PRICE_OUT_PER_M` | 0.10 / 0.50 | USD per million tokens, only for the daily cost cap |
+| `DEMO_LOG_DIR` | `.hotel-mcp/demo-logs` | Redacted web demo log and daily counters |
+| `DEMO_VIDEO_URL` | (none) | Shows a "Watch the 90-second demo" button |
 
 ## Commands
 
@@ -224,13 +291,17 @@ credit for the noise complaint." With a front-desk key it comes back `pending_ma
 | `python scripts/make_keys.py [--env]` | New demo keys (old ones stop working) |
 | `python scripts/demo_roles.py` | The same request as three roles |
 | `python -m eval.run_eval --runs 3 [--split heldout]` | Labelled eval, saves a report |
+| `streamlit run demo_app.py` | The web demo |
+| `python -m eval.run_agent_eval --runs 3 --price-in 0.1 --price-out 0.5 [--split heldout]` | Web demo agent eval (uses the API) |
+| `python -m eval.run_agent_eval --rescore eval/reports/agent-2026-10-24-dev.jsonl` | Re-grade a saved agent run, no API |
 | `python scripts/sync_policy.py --check` | The stage 1 copy still matches its pinned commit |
 | `hotel-tools-mcp` | Start the stdio server (needs `HOTEL_MCP_API_KEY`) |
 | `make check` | Lint, tests, eval gate, sync check |
 
 ## Testing and quality
 
-`pytest` runs 81 tests: every role × every tool, field views, tenant isolation, credits, the guard, the audit chain
+`pytest` runs 98 tests: the web demo (the agent loop with the model replaced over the real in-memory MCP server,
+the grader, limits, share links, the redacted log, and the page via AppTest), every role × every tool, field views, tenant isolation, credits, the guard, the audit chain
 (tampering detected), rate limits, keys, the server's tool list per role, and a stdio round trip with the server as
 a separate process. CI: ruff, pytest with an 85% coverage gate, pip-audit, the eval gate (100%), the stage 1 copy
 check, lychee link check and gitleaks.
