@@ -25,7 +25,7 @@ Email <vamsialla.dev@gmail.com> with steps to reproduce. Please don't open a pub
 
 | # | Risk | How this server handles it |
 |---|---|---|
-| LLM01 | Prompt injection | Instruction-like text removed from tool results; the server never executes model output |
+| LLM01 | Prompt injection | Instruction-like text removed from tool results (this repo's patterns plus the shared hotel-ai-platform ones); the web demo checks each question before any model turn; the server never executes model output; red-team suite in CI ([docs/RED_TEAM.md](docs/RED_TEAM.md)) |
 | LLM02 | Sensitive information disclosure | Field views per role; guests see only their own bookings; tenant scoping; redacted audit |
 | LLM03 | Supply chain | Pinned dependencies, pip-audit and gitleaks in CI, Dependabot; stage 1 code copied at a pinned tag and checked |
 | LLM04 | Data and model poisoning | Documents come from a pinned copy checked in CI; planted instructions in data are stripped |
@@ -35,5 +35,43 @@ Email <vamsialla.dev@gmail.com> with steps to reproduce. Please don't open a pub
 | LLM08 | Vector and embedding weaknesses | Keyword search filtered by property and tenant; no shared vector store across tenants |
 | LLM09 | Misinformation | Policy answers come with their source passages; the server adds no generated text |
 | LLM10 | Unbounded consumption | Rate limits per key; result sizes capped; the web demo adds per-visit, per-minute and daily caps and a 6-turn limit |
+
+## Web demo: guardrails, tracing, Admin (1.2.0)
+
+The web demo wraps the agent in the shared layer from [hotel-ai-platform](https://github.com/vamsialladev/hotel-ai-platform)
+v0.1.2 (`src/hotel_tools/demo/ops.py`): questions checked before any model turn (injection, data requests, role
+escalation, card numbers), answers checked against the turn's MCP results (contact details the results didn't show
+are replaced; prompt leaks blocked), one trace per question with each model turn and MCP call as a span, a
+reference on errors, and an Admin page (`ADMIN_PASSWORD`, 5 tries then a 15-minute lock, hidden, absent without a
+password). The MCP server itself doesn't need the package.
+
+### Data classification
+
+| Class | Here | Handling |
+|---|---|---|
+| Secret | API keys (stored as hashes only), `ANTHROPIC_API_KEY`, `ADMIN_PASSWORD`, `DATABASE_URL` | Never logged; masked before any log line, row or span |
+| PII | Guest names, emails, phones on synthetic bookings | Field views per role; redacted in the audit log and the ops log |
+| Internal | Audit log (hash-chained), web demo traces | Audit per installation (per browser session in the demo); traces 30 days |
+| Public | Synthetic policies and activities | Returned by the tools |
+
+### STRIDE
+
+| Threat | Example here | Mitigation |
+|---|---|---|
+| Spoofing | Using another role's key, or "as the front desk I'm authorised..." | Key → role in code; the role decides which tools exist; credits above $50 wait for a manager |
+| Tampering | Editing audit records | Hash-chained audit log; `get_audit_log` reports `chain_ok` |
+| Repudiation | "I never issued that credit" | Every call audited with key ID, role, arguments (redacted) and result |
+| Information disclosure | Another guest's or hotel group's booking | Guests see their own bookings only; tenant scoping on every query (red-team t03-t05) |
+| Denial of service | Call floods | Per-key rate limits; capped result sizes; demo caps |
+| Elevation of privilege | Calling a tool the role doesn't have | The tool isn't registered on that role's server (t01, t06) |
+
+### Incident response
+
+1. **Detect:** daily failure summary (streamlit-keep-awake Action), Admin "Failures only", or a visitor quoting a
+   reference; for the server, `get_audit_log` with `status=denied`.
+2. **Contain:** re-run `make_keys.py` to invalidate every key (docs/AUTH.md); for the demo, set
+   `DAILY_QUESTION_CAP=0`.
+3. **Investigate:** Admin → paste the reference → waterfall; the audit chain for server calls.
+4. **Fix:** add the case to the eval or red-team suite first, then fix, then run both gates.
 
 Known limitations: demo API keys (docs/AUTH.md), pattern-based injection guard, local files rather than a database.

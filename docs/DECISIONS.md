@@ -106,3 +106,14 @@ Each: context, decision, tradeoff, result.
 - **Tradeoff:** a sentence that promises and negates something else ("Your credit is approved, no action needed")
   would be missed. None appeared in 84 answers; the test list grows when one does.
 - **Result:** the saved second run re-scored without the model: 65/66 → 66/66; held-out unchanged at 18/18.
+
+## 12. The web demo gets the shared guardrails, tracing and an Admin page; the server stays standalone (2026-10-25)
+- **Context:** the final plan adds guardrails, a red team, tracing, one ops log and an Admin page to every live app.
+  This repo is two things: an MCP server people install, and a web demo around it.
+- **Decision:** the web demo wires hotel-ai-platform v0.1.2 (`src/hotel_tools/demo/ops.py`): input check before any
+  model turn, output check against the turn's MCP results (contact details only; promise wording is off because the
+  server's RBAC and credit limits decide what a role can do), one trace per question, an Admin page behind
+  `ADMIN_PASSWORD`. The server's quarantine uses the shared patterns only if the package is installed.
+- **Trade-off:** a bare MCP install keeps the narrower pattern list. Documented in SECURITY.md.
+- **Result:** red team shared 48/48 (three documented overrides); own 15 held-out cases 13/15 first run, 14/15 after
+  the quarantine fix; the 67 real texts the server returns are identical before and after.
