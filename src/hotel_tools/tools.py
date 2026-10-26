@@ -4,6 +4,8 @@ The MCP server (server.py) only exposes these; tests, the eval and the demo scri
 is one code path. A tool never moves money or confirms a booking: it records a request for a person to act on.
 """
 
+import contextlib
+import sys
 from dataclasses import dataclass, field
 
 from hotel_tools import guard, rbac
@@ -55,7 +57,9 @@ def search_policy(ctx: Context, question: str, property: str) -> dict:
         from hotel_tools.policy.retrieve import Retriever
 
         if not index_is_current(False):
-            build_index(use_embeddings=False)
+            # Over stdio, stdout is the MCP stream: the build's progress lines go to stderr, or they corrupt it.
+            with contextlib.redirect_stdout(sys.stderr):
+                build_index(use_embeddings=False)
         ctx.retriever = Retriever(use_embeddings=False)
     from hotel_tools.policy.config import TOP_K
 

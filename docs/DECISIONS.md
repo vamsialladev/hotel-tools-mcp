@@ -130,3 +130,12 @@ Each: context, decision, tradeoff, result.
   lines either. A new staff document must be added to the list (the marker test catches the marked ones only).
 - **Result:** the guest gets no staff-only passage for an events question; front desk still does. Policy eval dev
   and held-out unchanged (100%, 3 runs).
+
+## 14. The first search's index build prints to stderr, never stdout (2026-10-26)
+- **Context:** the agent protocols lab started this server over stdio from a fresh install. The first
+  `search_policy` built the policy index and printed "Reading documents from ..." to stdout, which over stdio is the
+  MCP JSON-RPC stream; the client logged an invalid message. The source checkout never showed it because its index
+  is already built.
+- **Decision:** the lazy build in `tools.search_policy` runs with stdout redirected to stderr.
+- **Trade-off:** none worth noting; stderr is where an MCP server's logs belong.
+- **Result:** a test fails without the change and passes with it.
