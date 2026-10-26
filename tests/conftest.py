@@ -30,3 +30,26 @@ def make_ctx(tmp_path):
         return ctx
 
     return make
+
+
+@pytest.fixture(autouse=True)
+def fresh_gate_counters():
+    """The Admin lockout counts per process (hotel-ai-platform admin_gate): reset it between tests."""
+    from hotelplatform import admin_gate
+
+    admin_gate.reset_process_counters()
+    yield
+    admin_gate.reset_process_counters()
+
+
+@pytest.fixture(autouse=True)
+def ops_log_in_tmp(tmp_path, monkeypatch):
+    """The web demo's ops store writes JSONL files without DATABASE_URL; tests write to a temp folder instead."""
+    from hotelplatform import oplog
+
+    from hotel_tools.demo import ops
+
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    store = oplog.OpsStore("hotel-tools-mcp", url="", log_dir=tmp_path / "ops")
+    monkeypatch.setattr(ops, "store", lambda: store)
+    yield store
