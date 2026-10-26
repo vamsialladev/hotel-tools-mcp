@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 
 
 ## [1.2.0] - 2026-10-25
+### Security
+- `search_policy` leaves staff-only documents out for the guest role (decision 13).
 ### Added
 - Web demo: shared guardrails, tracing and ops log from [hotel-ai-platform](https://github.com/vamsialladev/hotel-ai-platform)
   v0.1.2 (decision 12): input check before any model turn, output check against the turn's MCP results, one trace per

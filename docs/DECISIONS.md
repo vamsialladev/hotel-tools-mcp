@@ -117,3 +117,16 @@ Each: context, decision, tradeoff, result.
 - **Trade-off:** a bare MCP install keeps the narrower pattern list. Documented in SECURITY.md.
 - **Result:** red team shared 48/48 (three documented overrides); own 15 held-out cases 13/15 first run, 14/15 after
   the quarantine fix; the 67 real texts the server returns are identical before and after.
+
+## 13. Staff-only documents are left out of search_policy for the guest role (2026-10-26)
+- **Context:** connecting the stage 6 concierge as a guest showed `search_policy` returning a passage that starts
+  "CONFIDENTIAL - INTERNAL STAFF USE ONLY" (the Mountain Lodge events policy). Stage 1 is a staff tool and indexes
+  every document on purpose; this server also answers guests.
+- **Decision:** `rbac.STAFF_ONLY_SOURCES` lists the staff documents (the events policy, the front desk notes, the
+  housekeeping procedure). For a guest, `search_policy` asks for twice the usual number of passages, drops those,
+  and keeps the usual 5. Staff roles run exactly the stage 1 search. A test reads every raw document and fails if one
+  marked confidential or internal isn't listed.
+- **Trade-off:** document level, not section level: a guest can't see the housekeeping procedure's guest-facing
+  lines either. A new staff document must be added to the list (the marker test catches the marked ones only).
+- **Result:** the guest gets no staff-only passage for an events question; front desk still does. Policy eval dev
+  and held-out unchanged (100%, 3 runs).
