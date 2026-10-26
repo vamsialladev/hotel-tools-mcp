@@ -110,7 +110,7 @@ Each: context, decision, tradeoff, result.
 ## 12. The web demo gets the shared guardrails, tracing and an Admin page; the server stays standalone (2026-10-25)
 - **Context:** the final plan adds guardrails, a red team, tracing, one ops log and an Admin page to every live app.
   This repo is two things: an MCP server people install, and a web demo around it.
-- **Decision:** the web demo wires hotel-ai-platform v0.1.2 (`src/hotel_tools/demo/ops.py`): input check before any
+- **Decision:** the web demo wires hotel-ai-platform v0.1.3 (`src/hotel_tools/demo/ops.py`): input check before any
   model turn, output check against the turn's MCP results (contact details only; promise wording is off because the
   server's RBAC and credit limits decide what a role can do), one trace per question, an Admin page behind
   `ADMIN_PASSWORD`. The server's quarantine uses the shared patterns only if the package is installed.
