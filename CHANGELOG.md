@@ -13,6 +13,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 - Red-team suite in CI (`scripts/run_redteam.py`, docs/RED_TEAM.md) and a CycloneDX SBOM artifact.
 ### Changed
 - The server's quarantine also uses the shared patterns when they're installed (red-team rt31, m05).
+- The synthetic data ships with the package (`[tool.setuptools.data-files]`), so another app can install the server
+  and run it in-process; `DATA_DIR` falls back to that copy when there's no source checkout.
 
 ## [1.1.0] - 2026-10-24
 

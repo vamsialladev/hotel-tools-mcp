@@ -1,10 +1,16 @@
 """Settings, all from environment variables (see the configuration table in the README)."""
 
 import os
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-DATA_DIR = Path(os.getenv("HOTEL_MCP_DATA_DIR", ROOT / "data"))
+_INSTALLED_DATA = Path(sys.prefix) / "share" / "hotel-tools-mcp" / "data"  # pyproject [tool.setuptools.data-files]
+# A source checkout is recognised by its pyproject.toml, not by a data/ folder (an installed copy's index build once
+# created site-packages/../data, which then looked like a checkout).
+DATA_DIR = Path(
+    os.getenv("HOTEL_MCP_DATA_DIR") or (ROOT / "data" if (ROOT / "pyproject.toml").exists() else _INSTALLED_DATA)
+)
 # Where requests and the audit log are written. Git-ignored; one folder per installation.
 RUNTIME_DIR = Path(os.getenv("HOTEL_MCP_RUNTIME_DIR", ROOT / ".hotel-mcp"))
 KEYS_FILE = Path(os.getenv("HOTEL_MCP_KEYS_FILE", RUNTIME_DIR / "keys.json"))
