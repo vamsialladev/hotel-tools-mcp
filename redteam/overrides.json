@@ -1,0 +1,8 @@
+{
+  "_why": "Two shared output checks are off in this app by design. Promises (rt33, rt34): what a role may do is decided by the MCP server's RBAC and credit limits, not by wording; a front desk role really can issue a $40 credit, so 'I've issued it' is a fact. Citations (rt38): answers name the policy passages in a caption, not with numbered markers. The tool layer (cases t01-t07) is where actions are stopped.",
+  "expect": {
+    "rt33": "allow",
+    "rt34": "allow",
+    "rt38": "allow"
+  }
+}
