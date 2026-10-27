@@ -4,6 +4,7 @@
 ![Python 3.12](https://img.shields.io/badge/python-3.12-blue)
 [![Ruff](https://img.shields.io/badge/lint-ruff-261230)](https://docs.astral.sh/ruff/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+![coverage gate 85%](https://img.shields.io/badge/coverage%20gate-%E2%89%A585%25-brightgreen)
 
 **The hotel group's tools for any MCP client (Claude Desktop, Claude Code), with roles that decide which tools and
 fields each caller gets, one hotel group's data walled off from another's, and every call in a tamper-evident audit
@@ -184,6 +185,21 @@ week from the audit log, and audit findings in IT's quarterly review.
 | **Observability** | **Built (1.2.0, web demo):** every question is one trace (OpenTelemetry-shaped IDs) with a span per model turn and per MCP call (role, arguments, ok), written to the shared `ops_request_log` / `ops_trace_span` tables with the other hotel apps (PII removed first, batched, 30-day retention). Errors show "Reference: 4f1c9a2e"; the hidden Admin page finds it and draws the waterfall. Server side: the hash-chained audit log of every tool call. **Roadmap:** an OpenTelemetry exporter for the server itself. |
 | **Failure modes and rollback** | **Built:** an unexpected error returns "internal error" (never a trace) and is audited; bad arguments are refused with a safe message; a rate-limited key gets a clear error. Rollback: the server holds no migrations; run the previous tag. Key compromise: re-run `make_keys.py` (all old keys stop working). Audit retention and key rotation: [docs/AUTH.md](docs/AUTH.md). |
 
+## Security & guardrails
+
+**Guardrails and red team (1.2.0):** the web demo checks each question with the shared guardrails from
+[hotel-ai-platform](https://github.com/vamsialladev/hotel-ai-platform) before any model turn, and answers against the
+turn's MCP results. The server's quarantine also uses the shared patterns, after two red-team cases got past its own
+list (an instruction addressed to "Assistant," inside a policy passage). **Red team**
+([docs/RED_TEAM.md](docs/RED_TEAM.md), in CI): the shared corpus passes 48/48 (three documented differences: no
+promise or citation wording checks, because RBAC decides what a role can do). This repo's 15 held-out cases passed
+13/15 on the first run and 14/15 after the fix. The one left is a front desk agent claiming authority; the server's
+$50 limit stops it. The tool layer refuses a guest's credit, another guest's or hotel group's booking, and an
+auditor's write.
+
+[SECURITY.md](SECURITY.md): STRIDE threat model, OWASP Top 10 for LLM applications mapping, data classification and
+incident response. Keys are never stored, only their hashes; `.hotel-mcp/` and `.env*` are git-ignored.
+
 ## Run locally
 
 Windows (PowerShell):
@@ -306,21 +322,6 @@ the grader, limits, share links, the redacted log, and the page via AppTest), ev
 (tampering detected), rate limits, keys, the server's tool list per role, and a stdio round trip with the server as
 a separate process. CI: ruff, pytest with an 85% coverage gate, pip-audit, the eval gate (100%), the stage 1 copy
 check, lychee link check and gitleaks.
-
-## Security
-
-**Guardrails and red team (1.2.0):** the web demo checks each question with the shared guardrails from
-[hotel-ai-platform](https://github.com/vamsialladev/hotel-ai-platform) before any model turn, and answers against the
-turn's MCP results. The server's quarantine also uses the shared patterns, after two red-team cases got past its own
-list (an instruction addressed to "Assistant," inside a policy passage). **Red team**
-([docs/RED_TEAM.md](docs/RED_TEAM.md), in CI): the shared corpus passes 48/48 (three documented differences: no
-promise or citation wording checks, because RBAC decides what a role can do). This repo's 15 held-out cases passed
-13/15 on the first run and 14/15 after the fix. The one left is a front desk agent claiming authority; the server's
-$50 limit stops it. The tool layer refuses a guest's credit, another guest's or hotel group's booking, and an
-auditor's write.
-
-[SECURITY.md](SECURITY.md): STRIDE threat model, OWASP Top 10 for LLM applications mapping, data classification and
-incident response. Keys are never stored, only their hashes; `.hotel-mcp/` and `.env*` are git-ignored.
 
 ## Documentation
 
