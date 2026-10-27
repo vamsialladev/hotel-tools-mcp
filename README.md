@@ -235,6 +235,17 @@ docker build -t hotel-tools-mcp .
 docker run -i --rm -e HOTEL_MCP_API_KEY -v "$PWD/.hotel-mcp:/app/.hotel-mcp" hotel-tools-mcp
 ```
 
+## Public read-only demo endpoint
+
+`asgi.py` serves the same server over Streamable HTTP for anyone to try with an MCP client, under stricter rules
+(decision 15): one fixed synthetic guest, so no key; read-only, because the guest's `create_booking_request` isn't
+registered; the guest limit of 10 calls a minute (per running instance); synthetic data only. Every call still goes
+through the role check, the rate limit and the audit log. It's stateless, so it runs on a free serverless host.
+
+```bash
+python -m uvicorn asgi:app --port 8000      # then connect an MCP client to http://127.0.0.1:8000/mcp
+```
+
 ## Connect to Claude Desktop or Claude Code
 
 Run `python scripts/make_keys.py` first and copy the key for the role you want. Then:

@@ -38,7 +38,8 @@ def make_context(principal) -> Context:
     )
 
 
-def build_server(ctx: Context) -> MCPServer:
+def build_server(ctx: Context, exclude: frozenset[str] = frozenset()) -> MCPServer:
+    """Register only the tools the caller's role may use, minus `exclude` (the public demo drops write tools)."""
     server = MCPServer(name="hotel-tools", instructions=INSTRUCTIONS, version="1.0.0")
 
     def search_policy(question: str, property: str) -> dict:
@@ -77,7 +78,7 @@ def build_server(ctx: Context) -> MCPServer:
         search_policy, lookup_booking, list_activities, create_booking_request,
         issue_credit_request, approve_credit_request, get_audit_log,
     )}  # fmt: skip
-    for name in sorted(rbac.allowed_tools(ctx.principal.role)):
+    for name in sorted(rbac.allowed_tools(ctx.principal.role) - exclude):
         server.add_tool(functions[name], name=name)
     return server
 

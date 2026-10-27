@@ -4,6 +4,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [Unreleased]
+### Added
+- A public read-only demo endpoint (`asgi.py`, `hotel_tools.public`): Streamable HTTP, stateless, one synthetic guest, no write tools, 10 calls a minute (decision 15).
+
 ## [1.2.0] - 2026-10-25
 ### Security
 - `search_policy` leaves staff-only documents out for the guest role (decision 13).
