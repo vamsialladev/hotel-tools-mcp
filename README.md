@@ -16,6 +16,11 @@ log.**
 > [hotel-ai-discovery](https://github.com/vamsialladev/hotel-ai-discovery).
 
 <!-- DEMO-VIDEO -->
+<!-- AI-NARRATED-DEMO:START -->
+<a href="https://vamsialla.com/projects/hotel-tools-mcp.html#demo"><img src="docs/video/demo-ai-voice.jpg" alt="Demo video, AI-narrated: the server inside the MCP Inspector as a guest: four tools, a cited policy search, another guest's booking refused as not found, the guest's own booking with only guest fields" width="720"></a>
+
+**Demo video (1:11, AI-narrated):** [watch it with sound on vamsialla.com](https://vamsialla.com/projects/hotel-tools-mcp.html#demo) (GitHub can't play MP4 files from a repo) · [download the MP4](docs/video/demo-ai-voice.mp4) · captions burned in ([text](docs/video/demo-ai-voice.srt)). The narrator is an AI voice (Kokoro); my own-voice version will replace it.
+<!-- AI-NARRATED-DEMO:END -->
 
 **Try it live:** the web demo (pick a role and chat; Claude calls this server's tools in-process) isn't deployed
 yet. I add the Streamlit Cloud app and its API key myself. Locally it's `streamlit run demo_app.py`, and the server
