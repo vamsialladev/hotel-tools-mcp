@@ -3,6 +3,15 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-10-24
+
+### Added
+
+- Web demo (`demo_app.py`): pick a role and chat; Claude Haiku 5.5 calls the server's tools through an in-memory
+  MCP client, with a step timeline, cited policy answers, follow-ups, past conversations, read-only share links,
+  a "Recorded for staff" table, per-session requests and audit log, limits, and a redacted log.
+- Agent eval for the demo: 22 dev + 6 held-out cases, 3 runs, saved reports, `--rescore [--write]`.
+
 ## [1.0.0] - 2026-10-24
 
 ### Added

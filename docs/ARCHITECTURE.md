@@ -51,3 +51,18 @@ sequenceDiagram
 
 See the README's "Design at scale": Postgres with row-level security, streamable HTTP with OAuth, rate limits in a
 shared store, the index built in CI.
+
+## Web demo
+
+`demo_app.py` → `hotel_tools/demo/agent.py` → in-memory MCP `Client` → `build_server(ctx)` for the chosen role.
+
+| Module | Job |
+|---|---|
+| `demo_app.py` | Streamlit page: role picker, chat, steps, "Recorded for staff", history, share links |
+| `src/hotel_tools/demo/agent.py` | `McpSession` (the client on a background event loop) and the tool-use loop (Claude Haiku 5.5, at most 6 model turns, streamed) |
+| `src/hotel_tools/demo/limits.py` | Per-visit, per-minute and daily (questions, cost) limits, checked before the model |
+| `src/hotel_tools/demo/requestlog.py` | One redacted JSON line per message (no tool results) |
+| `src/hotel_tools/demo/share.py` | Read-only share links with personal data and booking IDs replaced |
+| `eval/run_agent_eval.py` | 22 dev + 6 held-out cases, deterministic checks, `--rescore` |
+
+Each browser session has its own temporary runtime folder, so its requests and audit log are private to it.

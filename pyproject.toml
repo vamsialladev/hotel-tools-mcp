@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hotel-tools-mcp"
-version = "1.0.0"
+version = "1.1.0"
 description = "Stage 7: an MCP server with the hotel group's tools, role-based access, tenant isolation and an audit log"
 requires-python = ">=3.12"
 license = { text = "MIT" }

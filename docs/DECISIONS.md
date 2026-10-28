@@ -61,3 +61,48 @@ Each: context, decision, tradeoff, result.
 - **Decision:** the check now fails on an empty list, and the case first makes a call in each group.
 - **Tradeoff:** none.
 - **Result:** 99/99 dev, 18/18 held-out.
+
+## 8. A web demo that goes through the real MCP protocol
+
+- **Context:** the checklist wants a live link that works on the first click. An MCP server needs an MCP client,
+  and asking a recruiter to edit Claude Desktop's config is not a first click.
+- **Decision:** `demo_app.py` (Streamlit) runs `build_server(ctx)` in-process and talks to it with the SDK's
+  in-memory MCP `Client`: `list_tools` for the role, `call_tool` for each call. Claude Haiku 5.5 runs a manual
+  tool-use loop (at most 6 model turns) with only that role's tools. The client lives in one task on a background
+  event loop, because anyio requires a client to be opened and closed in the same task (the first version failed
+  with "Attempted to exit cancel scope in a different task").
+- **Tradeoff:** one server per role per browser session instead of one process per key; the stdio server is
+  unchanged and still tested as a separate process.
+- **Result:** every demo call goes through the same rate limit, role check, field view, injection guard and audit
+  record as Claude Desktop's. Page tests run the real server with the model replaced.
+
+## 9. Follow-ups as conversation history, not a rewrite step
+
+- **Context:** stages 1 and 8 rewrite a follow-up into a standalone question before retrieval, because retrieval
+  runs before the model. Here the model writes the tool arguments itself.
+- **Decision:** send the last 6 turns (text only, no old tool results) with the new message; the model resolves
+  "it" and "and at Mountain Lodge?" into standalone tool arguments, which the step timeline shows.
+- **Tradeoff:** a few hundred more input tokens per message than a rewrite; old tool results aren't re-sent, so
+  the model calls a tool again when it needs fresh data.
+- **Result:** follow-up cases d20, d21, h06: 9/9 across 3 runs (the search ran for `mountain-lodge`; "it" resolved
+  to BR-1042's check-out date; "same for ML-2002, $30" issued $30 on ML-2002).
+
+## 10. Citations must name a real source; fix the prompt, not the grader
+
+- **Context:** first agent run: 4 of 9 policy answers cited "[Mountain Lodge > Pets]" or "[beach-resort > Pets]",
+  shortened forms that don't match any document title.
+- **Decision:** keep the grader strict (the bracket must contain the title of a passage `search_policy` returned)
+  and tell the model to copy the passage's `section` value exactly.
+- **Tradeoff:** a longer citation in the answer.
+- **Result:** citations 9/9 dev and 3/3 held-out in the second run.
+
+## 11. A promise check that understands "not yet"
+
+- **Context:** "nothing has been approved yet" and "no credit has been approved yet" are the right answers, and a
+  regular expression called them promises. Stage 2 hit the same trap with negated offers.
+- **Decision:** `no_promise` checks sentence by sentence and skips sentences with a negation (no, not, nothing,
+  yet, n't, until, once, unless). "Is confirmed" alone doesn't count, because "your booking is confirmed as Ocean
+  King" describes the stay that exists; "has been confirmed" does. The real phrasings are unit tests.
+- **Tradeoff:** a sentence that promises and negates something else ("Your credit is approved, no action needed")
+  would be missed. None appeared in 84 answers; the test list grows when one does.
+- **Result:** the saved second run re-scored without the model: 65/66 → 66/66; held-out unchanged at 18/18.
