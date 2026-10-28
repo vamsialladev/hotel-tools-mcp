@@ -139,3 +139,20 @@ Each: context, decision, tradeoff, result.
 - **Decision:** the lazy build in `tools.search_policy` runs with stdout redirected to stderr.
 - **Trade-off:** none worth noting; stderr is where an MCP server's logs belong.
 - **Result:** a test fails without the change and passes with it.
+
+## 15. A public read-only endpoint on free serverless hosting (2026-10-27)
+
+- **Context:** the owner wanted a public MCP endpoint anyone can connect to, at no cost and with no card. Hugging
+  Face Docker and CPU Gradio Spaces now need a paid plan (PRO); free ZeroGPU Spaces make every caller send their own
+  Hugging Face token. Vercel's free Hobby plan runs Python ASGI apps (generally available) and pauses instead of
+  billing when a limit is reached; Render's free tier would also work but was ruled out earlier.
+- **Decision:** `asgi.py` serves `hotel_tools.public`: Streamable HTTP, stateless JSON responses, one fixed synthetic
+  guest (no key), the guest tools minus `create_booking_request`, the guest rate limit, and the audit log and
+  keyword-only policy index in the temp folder (the only writable place on serverless). `.vercelignore` keeps the web
+  demo's requirements.txt out, so Vercel installs pyproject.toml's four dependencies.
+- **Tradeoff:** the 10-a-minute limit and the audit log live in one instance's memory and temp folder, so they reset
+  on a cold start and aren't shared if Vercel runs two instances; a shared counter (Neon) is the fix if it matters.
+  The first search after a cold start builds the index (0.4 s locally).
+- **Result:** 5 tests (`tests/test_public.py`): only the 3 read tools are listed, real answers with sources, another
+  guest's booking is "not found", the guest's own booking shows guest fields only, a write called by name is
+  refused, the 11th call in a minute is rate-limited. Checked locally under uvicorn with a fresh index folder.

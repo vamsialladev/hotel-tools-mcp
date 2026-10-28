@@ -1,0 +1,15 @@
+# The public endpoint (asgi.py) needs only src/, data/ and pyproject.toml's dependencies.
+# requirements.txt is the Streamlit web demo's list (Streamlit, Anthropic, the shared platform), so it stays out:
+# Vercel then installs from pyproject.toml.
+requirements.txt
+requirements-dev.txt
+demo_app.py
+views/
+tests/
+eval/
+redteam/
+docs/
+scripts/
+build/
+.hotel-mcp/
+.env*
