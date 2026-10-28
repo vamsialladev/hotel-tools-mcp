@@ -7,6 +7,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 ## [Unreleased]
 ### Added
 - A public read-only demo endpoint (`asgi.py`, `hotel_tools.public`): Streamable HTTP, stateless, one synthetic guest, no write tools, 10 calls a minute (decision 15).
+- A short page at `/` on the public endpoint that explains it and links to the connect page.
 
 ## [1.2.0] - 2026-10-25
 ### Security

@@ -242,6 +242,8 @@ docker run -i --rm -e HOTEL_MCP_API_KEY -v "$PWD/.hotel-mcp:/app/.hotel-mcp" hot
 registered; the guest limit of 10 calls a minute (per running instance); synthetic data only. Every call still goes
 through the role check, the rate limit and the audit log. It's stateless, so it runs on a free serverless host.
 
+**Live:** `https://hotel-tools-mcp.vercel.app/mcp` (Vercel Hobby, free; the first call after a quiet spell may take a moment to wake). How to connect from Claude, the MCP Inspector, Cursor or VS Code: [vamsialla.com/projects/hotel-tools-mcp-connect.html](https://vamsialla.com/projects/hotel-tools-mcp-connect.html).
+
 ```bash
 python -m uvicorn asgi:app --port 8000      # then connect an MCP client to http://127.0.0.1:8000/mcp
 ```

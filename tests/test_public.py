@@ -62,6 +62,12 @@ def test_write_tool_is_refused_even_if_called_by_name(client):
     assert "error" in res or res["result"].get("isError")
 
 
+def test_root_page_explains_the_endpoint_and_links_to_the_connect_page(client):
+    r = client.get("/")
+    assert r.status_code == 200 and r.headers["content-type"].startswith("text/html")
+    assert "hotel-tools-mcp-connect.html" in r.text and "/mcp" in r.text and "synthetic data" in r.text
+
+
 def test_guest_rate_limit_is_ten_a_minute(client):
     results = [call(client, "list_activities", {"property": "beach-resort"}, i) for i in range(11)]
     assert all("error" not in r for r in results[:10])
