@@ -35,3 +35,17 @@ it's deployed, before recording.
 
 I built an MCP server for a hotel group where the role decides which tools even exist, and a web demo where
 Claude calls them so you can watch every step.
+
+## AI narration (used in docs/video/demo-ai-voice.mp4)
+
+Until I record my own voice, the demo video (1:11) is narrated by an AI voice (Kokoro `af_heart`, local) and labelled "AI-narrated" on screen and here. It was recorded from the official MCP Inspector 2.10.1 (`npx -y @modelcontextprotocol/inspector@2.10.1`), connected over stdio to a local copy of this server as the guest role, with synthetic data with Playwright; the captions are the narration, timed to the voice. `/` marks a pause.
+
+| Step | Narration |
+|---|---|
+| intro | This is the hotel group's tool server, inside the official MCP Inspector, / a standard client anyone can use. / I'm connecting with a guest's key, and all the data is made up. |
+| tools | A guest sees four tools. / Front-desk staff would see five, and a manager six. / The role decides which tools even exist. |
+| policy | I'll ask the policy search whether I can bring my dog to the beach resort. / It returns the passages with their source, / and a note that the text is reference data, never instructions. |
+| other | Now I'll try someone else's booking. / The server says it doesn't exist, / so a guest can't even find out that it's there. |
+| own | My own booking works, / and it shows only what a guest is allowed to see. / No name, no email, no phone number. |
+| proof | Every call is checked against the role and written to an audit log. / In the eval, ninety-nine out of ninety-nine checks pass, across three runs. / And the server calls no model, so a call costs nothing. |
+| end | The code is on GitHub, and the link's below. |

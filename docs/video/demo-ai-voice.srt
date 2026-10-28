@@ -1,0 +1,78 @@
+1
+00:00:03,000 --> 00:00:07,885
+This is the hotel group's tool server, inside the official MCP
+Inspector,
+
+2
+00:00:08,735 --> 00:00:10,847
+a standard client anyone can use.
+
+3
+00:00:11,697 --> 00:00:15,068
+I'm connecting with a guest's key, and all the data is made up.
+
+4
+00:00:15,672 --> 00:00:17,187
+A guest sees four tools.
+
+5
+00:00:18,037 --> 00:00:21,194
+Front-desk staff would see five, and a manager six.
+
+6
+00:00:22,044 --> 00:00:24,391
+The role decides which tools even exist.
+
+7
+00:00:25,000 --> 00:00:28,968
+I'll ask the policy search whether I can bring my dog to the beach
+resort.
+
+8
+00:00:29,818 --> 00:00:32,037
+It returns the passages with their source,
+
+9
+00:00:32,887 --> 00:00:36,513
+and a note that the text is reference data, never instructions.
+
+10
+00:00:37,140 --> 00:00:39,124
+Now I'll try someone else's booking.
+
+11
+00:00:39,974 --> 00:00:41,830
+The server says it doesn't exist,
+
+12
+00:00:42,680 --> 00:00:45,091
+so a guest can't even find out that it's there.
+
+13
+00:00:45,687 --> 00:00:46,988
+My own booking works,
+
+14
+00:00:47,838 --> 00:00:50,526
+and it shows only what a guest is allowed to see.
+
+15
+00:00:51,376 --> 00:00:53,787
+No name, no email, no phone number.
+
+16
+00:00:54,390 --> 00:00:57,995
+Every call is checked against the role and written to an audit log.
+
+17
+00:00:58,845 --> 00:01:03,539
+In the eval, ninety-nine out of ninety-nine checks pass, across three
+runs.
+
+18
+00:01:04,389 --> 00:01:07,525
+And the server calls no model, so a call costs nothing.
+
+19
+00:01:08,125 --> 00:01:10,621
+The code is on GitHub, and the link's below.
