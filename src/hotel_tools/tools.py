@@ -4,6 +4,8 @@ The MCP server (server.py) only exposes these; tests, the eval and the demo scri
 is one code path. A tool never moves money or confirms a booking: it records a request for a person to act on.
 """
 
+import contextlib
+import sys
 from dataclasses import dataclass, field
 
 from hotel_tools import guard, rbac
@@ -55,10 +57,20 @@ def search_policy(ctx: Context, question: str, property: str) -> dict:
         from hotel_tools.policy.retrieve import Retriever
 
         if not index_is_current(False):
-            build_index(use_embeddings=False)
+            # Over stdio, stdout is the MCP stream: the build's progress lines go to stderr, or they corrupt it.
+            with contextlib.redirect_stdout(sys.stderr):
+                build_index(use_embeddings=False)
         ctx.retriever = Retriever(use_embeddings=False)
+    from hotel_tools.policy.config import TOP_K
+
+    staff = rbac.sees_staff_documents(ctx.principal)
+    if staff:  # staff roles: exactly the stage 1 search
+        hits = ctx.retriever.search(question[:500], prop)
+    else:  # a guest: ask for more, drop staff-only documents, keep the usual number
+        hits = ctx.retriever.search(question[:500], prop, k=TOP_K * 2)
+        hits = [h for h in hits if h["source"] not in rbac.STAFF_ONLY_SOURCES][:TOP_K]
     passages, removed = [], 0
-    for h in ctx.retriever.search(question[:500], prop):
+    for h in hits:
         text, flagged = guard.quarantine(h["text"])
         removed += flagged
         passages.append({"source": h["source"], "section": h["section"], "property": h["property"], "text": text})

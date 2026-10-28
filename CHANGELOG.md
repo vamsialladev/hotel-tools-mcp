@@ -3,6 +3,23 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [1.2.0] - 2026-10-25
+### Security
+- `search_policy` leaves staff-only documents out for the guest role (decision 13).
+### Fixed
+- The first search's index build printed to stdout, which corrupts the stdio MCP stream (decision 14).
+### Added
+- Web demo: shared guardrails, tracing and ops log from [hotel-ai-platform](https://github.com/vamsialladev/hotel-ai-platform)
+  v0.1.2 (decision 12): input check before any model turn, output check against the turn's MCP results, one trace per
+  question (model turns, MCP calls), "Reference: ..." on errors, hidden Admin page (`ADMIN_PASSWORD`, shared lockout),
+  JSON startup logs, privacy note, `?source=keepawake` runs nothing.
+- Red-team suite in CI (`scripts/run_redteam.py`, docs/RED_TEAM.md) and a CycloneDX SBOM artifact.
+### Changed
+- The server's quarantine also uses the shared patterns when they're installed (red-team rt31, m05).
+- The synthetic data ships with the package (`[tool.setuptools.data-files]`), so another app can install the server
+  and run it in-process; `DATA_DIR` falls back to that copy when there's no source checkout.
+
 ## [1.1.0] - 2026-10-24
 
 ### Added

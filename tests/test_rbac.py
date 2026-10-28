@@ -1,5 +1,7 @@
 """Every role x every tool: allowed calls run, denied calls are refused and audited. Field-level views per role."""
 
+import re
+
 import pytest
 
 from hotel_tools import rbac
@@ -91,3 +93,27 @@ def test_guest_requests_only_for_their_own_booking(make_ctx):
 
 def test_unexpected_arguments_are_invalid_not_a_crash(make_ctx):
     assert call(make_ctx("front_desk"), "lookup_booking", {"nope": 1}) == {"error": "invalid arguments"}
+
+
+def test_every_raw_document_marked_internal_is_staff_only():
+    from hotel_tools.policy.config import RAW_DIR
+    from hotel_tools.policy.ingest import load_pdf_pages
+
+    marked = set()
+    for path in RAW_DIR.rglob("*"):
+        if path.is_file():
+            pdf = path.suffix == ".pdf"
+            text = " ".join(t for _, t in load_pdf_pages(path)) if pdf else path.read_text(encoding="utf-8")
+            if re.search(r"confidential|internal staff|staff use only", text, re.I):
+                marked.add(path.relative_to(RAW_DIR).as_posix())
+    assert "mountain-lodge/events_weddings.pdf" in marked  # the check can see a marked document
+    assert marked <= rbac.STAFF_ONLY_SOURCES
+
+
+def test_a_guest_never_gets_a_staff_only_passage_but_staff_do(make_ctx):
+    question = {"question": "event room capacity and wedding deposit", "property": "mountain-lodge"}
+    guest = call(make_ctx("guest"), "search_policy", question)
+    staff = call(make_ctx("front_desk"), "search_policy", question)
+    assert guest["passages"] and staff["passages"]
+    assert not any(p["source"] in rbac.STAFF_ONLY_SOURCES for p in guest["passages"])
+    assert any(p["source"] == "mountain-lodge/events_weddings.pdf" for p in staff["passages"])

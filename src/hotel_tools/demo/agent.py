@@ -20,6 +20,7 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 
 import anthropic
+from hotelplatform import tracing
 from mcp import Client
 
 from hotel_tools.demo import config
@@ -70,6 +71,7 @@ class Turn:
     usage: dict = field(default_factory=lambda: {"input_tokens": 0, "output_tokens": 0, "calls": 0})
     seconds: float = 0.0
     stop: str = ""  # end_turn | max_turns | error
+    tool_texts: list = field(default_factory=list)  # every MCP result as text: what the output check grounds on
 
 
 class McpSession:
@@ -171,20 +173,25 @@ def respond(
     system = SYSTEM.format(persona=PERSONAS[turn.role], instructions=INSTRUCTIONS)
     messages = messages_for(history or [], question)
     parts: list[str] = []
-    for _ in range(MAX_TURNS):
+    for model_turn in range(1, MAX_TURNS + 1):
         t = time.perf_counter()
-        with client.messages.stream(
-            model=config.LLM_MODEL,
-            max_tokens=config.LLM_MAX_TOKENS,
-            system=system,
-            tools=session.tools,
-            messages=messages,
-            output_config={"effort": config.LLM_EFFORT},
-        ) as stream:
+        with (
+            tracing.span("model_call", turn=model_turn, model=config.LLM_MODEL, role=turn.role) as span,
+            client.messages.stream(
+                model=config.LLM_MODEL,
+                max_tokens=config.LLM_MAX_TOKENS,
+                system=system,
+                tools=session.tools,
+                messages=messages,
+                output_config={"effort": config.LLM_EFFORT},
+            ) as stream,
+        ):
             for text in stream.text_stream:
                 parts.append(text)
                 yield text
             message = stream.get_final_message()
+            _set(span, tokens_in=_usage(message, "input_tokens"), tokens_out=_usage(message, "output_tokens"),
+                 stop_reason=getattr(message, "stop_reason", None))  # fmt: skip
         turn.usage["input_tokens"] += message.usage.input_tokens
         turn.usage["output_tokens"] += message.usage.output_tokens
         turn.usage["calls"] += 1
@@ -197,7 +204,10 @@ def respond(
         results = []
         for use in uses:
             t = time.perf_counter()
-            result = session.call(use.name, dict(use.input))
+            with tracing.span(f"mcp:{use.name}", args=dict(use.input), role=turn.role) as span:
+                result = session.call(use.name, dict(use.input))
+                _set(span, ok="error" not in result, result=summarize(use.name, result))
+            turn.tool_texts.append(json.dumps(result, ensure_ascii=False, default=str)[:8000])
             if use.name == "search_policy":
                 turn.sources += [p["section"] for p in result.get("passages", [])]
             step = _record(turn, f"MCP call: {use.name}", dict(use.input), summarize(use.name, result), t)
@@ -222,6 +232,19 @@ def respond(
         yield note
     turn.answer = "".join(parts).strip()
     turn.seconds = time.perf_counter() - start
+
+
+def _set(span, **attrs) -> None:
+    """Tracing never breaks a turn: no span (evals, tests) or an odd response object is fine."""
+    if span is not None:
+        try:
+            span.set(**attrs)
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def _usage(message, name: str):
+    return getattr(getattr(message, "usage", None), name, None)
 
 
 def _record(turn: Turn, name: str, inp: dict, out: dict, start: float) -> Step:

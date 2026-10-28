@@ -52,6 +52,21 @@ BOOKING_FIELDS = {
     ),
 }
 
+# Policy documents written for staff, not guests: search_policy leaves them out for the guest role. Stage 1 is a
+# staff tool, so it indexes them on purpose; this server also answers guests (the stage 6 concierge connects as one).
+# tests/test_rbac.py checks that every raw document marked confidential or internal is listed here.
+STAFF_ONLY_SOURCES = frozenset(
+    {
+        "mountain-lodge/events_weddings.pdf",  # "CONFIDENTIAL - INTERNAL STAFF USE ONLY"
+        "mountain-lodge/front_desk_notes.txt",  # staff notes ("never promise it at booking")
+        "shared/housekeeping_sop.md",  # a staff procedure
+    }
+)
+
+
+def sees_staff_documents(principal: Principal) -> bool:
+    return principal.role != "guest"
+
 
 class Denied(Exception):
     """The caller's role may not do this. The message is safe to return to the client."""

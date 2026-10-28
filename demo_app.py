@@ -18,13 +18,14 @@ sys.path.insert(0, str(ROOT / "src"))
 
 import anthropic  # noqa: E402
 import streamlit as st  # noqa: E402
+from hotelplatform import admin_gate, bots, jsonlog  # noqa: E402
 
 from hotel_tools import rbac  # noqa: E402
 from hotel_tools.audit import AuditLog  # noqa: E402
 from hotel_tools.auth import Principal  # noqa: E402
 from hotel_tools.config import DATA_DIR, RATE_LIMITS  # noqa: E402
-from hotel_tools.demo import agent, limits, requestlog, share  # noqa: E402
-from hotel_tools.demo.config import DEMO_VIDEO_URL, PORTFOLIO_URL, REPO_URL  # noqa: E402
+from hotel_tools.demo import agent, limits, ops, requestlog, share  # noqa: E402
+from hotel_tools.demo.config import DEMO_VIDEO_URL, LLM_MODEL, PORTFOLIO_URL, REPO_URL  # noqa: E402
 from hotel_tools.ratelimit import RateLimiter  # noqa: E402
 from hotel_tools.store import Store  # noqa: E402
 from hotel_tools.tools import Context  # noqa: E402
@@ -149,11 +150,27 @@ def turn_dict(turn: agent.Turn) -> dict:
 
 
 def answer(question: str, role: str):
+    """One question = one trace (hotel-ai-platform): input check, each model turn and MCP call, output check."""
+    with ops.start(state().session_id) as trace:
+        _answer(question, role, trace)
+
+
+def _answer(question: str, role: str, trace):
     s = state()
     reason = limits.blocked(s.times, s.asked, time.time())
     if reason:
         st.info(reason, icon=":material/hourglass:")
+        ops.finish(trace, agent.Turn(question, role), status="capped", error_type="limit")
         return
+    verdict = ops.check_question(question)  # injection, data requests, card numbers: before any model turn
+    if not verdict.allowed:
+        with st.chat_message("user"):
+            st.markdown(question)
+        with st.chat_message("assistant"):
+            st.markdown(verdict.message)
+        ops.finish(trace, agent.Turn(question, role), status="blocked", error_type=verdict.reason)
+        return
+    question_for_model = verdict.text  # contact details replaced, planted sentences cut out
     s.asked += 1
     s.times = [t for t in s.times if time.time() - t < 60] + [time.time()]
     history = [{"question": t["question"], "answer": t["answer"]} for t in current_turns()]
@@ -168,14 +185,27 @@ def answer(question: str, role: str):
             def on_step(step):
                 status.write(f"✓ {step.name}")
 
-            st.write_stream(agent.respond(question, session, history, on_step=on_step, turn=turn))
+            st.write_stream(agent.respond(question_for_model, session, history, on_step=on_step, turn=turn))
             status.update(label=f"Done: {len(turn.steps)} steps", state="complete")
-        except (anthropic.APIConnectionError, anthropic.APITimeoutError, anthropic.APIStatusError):
-            st.error(FRIENDLY_ERROR, icon=":material/cloud_off:")
+        except (anthropic.APIConnectionError, anthropic.APITimeoutError, anthropic.APIStatusError) as exc:
+            st.error(f"{FRIENDLY_ERROR} Reference: {trace.reference}", icon=":material/cloud_off:")
+            jsonlog.exception(exc, trace_id=trace.trace_id, where="demo")
+            timeout = isinstance(exc, anthropic.APITimeoutError)
+            ops.finish(trace, turn, status="timeout" if timeout else "error", error_type=type(exc).__name__)
             return
-        except Exception:  # noqa: BLE001 - never show a trace to a visitor
-            st.error("Something went wrong on my side. Please try a different question.", icon=":material/error:")
+        except Exception as exc:  # noqa: BLE001 - never show a stack trace to a visitor
+            st.error(
+                f"Something went wrong on my side. Please try a different question. Reference: {trace.reference}",
+                icon=":material/error:",
+            )
+            jsonlog.exception(exc, trace_id=trace.trace_id, where="demo")
+            ops.finish(trace, turn, status="error", error_type=type(exc).__name__)
             return
+    checked = ops.check_answer(turn.answer, turn.tool_texts, question_for_model)
+    if checked.text != turn.answer:  # contact details the role's MCP results didn't show, or a prompt leak
+        turn.answer = checked.text
+    ops.finish(trace, turn, status="ok" if checked.allowed else "blocked",
+               error_type=None if checked.allowed else checked.reason)  # fmt: skip
     limits.record(turn.usage)
     try:
         requestlog.write(turn, s.session_id)
@@ -291,13 +321,40 @@ def sidebar() -> str:
         st.link_button("About this project (GitHub)", REPO_URL, icon=":material/code:")
         st.link_button("Portfolio", PORTFOLIO_URL, icon=":material/person:")
         st.caption("Stage 7 of a simulated client engagement. Synthetic data, no real guests.")
+        st.caption(
+            "Privacy: questions, answers and each step's trace are logged to improve the service, with personal "
+            "details removed first, and deleted after 30 days."
+        )
     return role
 
 
-token = st.query_params.get("share")
-if token:
-    shared_page(token)
+@st.cache_resource(show_spinner=False)
+def startup_log() -> bool:
+    """Once per server start: the JSON lines every hotel app writes (version, settings set/missing, dependencies)."""
+    ops.configure_logs()
+    jsonlog.app_start(app_version=ops.APP_VERSION)
+    jsonlog.config_loaded(["ANTHROPIC_API_KEY", "ADMIN_PASSWORD", "DATABASE_URL"], model=LLM_MODEL)
+    jsonlog.dependency_health(ops.dependencies())
+    return True
+
+
+def demo_page():
+    token = st.query_params.get("share")
+    if token:
+        shared_page(token)
+        st.stop()
+    st.title("🔐 Hotel Tools MCP")
+    st.caption("Stage 7 · one MCP server, four roles, every call checked and audited · synthetic data")
+    chat_page(sidebar())
+
+
+if bots.is_bot(st.query_params):  # streamlit-keep-awake: the page loads; no model call, no log row
+    st.caption("Awake.")
     st.stop()
-st.title("🔐 Hotel Tools MCP")
-st.caption("Stage 7 · one MCP server, four roles, every call checked and audited · synthetic data")
-chat_page(sidebar())
+startup_log()
+pages = [st.Page(demo_page, title="Demo", icon=":material/chat:", default=True)]
+if admin_gate.enabled():  # no Admin page at all without ADMIN_PASSWORD; out of the menu until signed in
+    gate = st.session_state.get("_gate_admin")
+    pages.append(st.Page("views/admin.py", title="Admin", icon=":material/admin_panel_settings:", url_path="admin",
+                         visibility="visible" if gate and gate.unlocked else "hidden"))  # fmt: skip
+st.navigation(pages, position="hidden" if len(pages) == 1 else "sidebar").run()

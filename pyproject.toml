@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hotel-tools-mcp"
-version = "1.1.0"
+version = "1.2.0"
 description = "Stage 7: an MCP server with the hotel group's tools, role-based access, tenant isolation and an audit log"
 requires-python = ">=3.12"
 license = { text = "MIT" }
@@ -19,6 +19,14 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 hotel_tools = ["policy/SOURCE.json"]
+
+# The synthetic data ships with the package, so another app can install the server and run it in-process (stage 6's
+# concierge does). config.DATA_DIR falls back to this copy when there's no source checkout.
+[tool.setuptools.data-files]
+"share/hotel-tools-mcp/data" = ["data/*.json"]
+"share/hotel-tools-mcp/data/policy/raw/beach-resort" = ["data/policy/raw/beach-resort/*"]
+"share/hotel-tools-mcp/data/policy/raw/mountain-lodge" = ["data/policy/raw/mountain-lodge/*"]
+"share/hotel-tools-mcp/data/policy/raw/shared" = ["data/policy/raw/shared/*"]
 
 [tool.ruff]
 line-length = 120

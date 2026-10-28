@@ -181,6 +181,7 @@ week from the audit log, and audit findings in IT's quarterly review.
 | **PII and tenant isolation** | **Built:** `hotel_group_id` on every record, every read scoped to the caller's group, no cross-group method; field views per role; a guest only sees their own bookings; audit records hold an argument hash and a redacted detail, never raw arguments or emails (stage 1's redaction, copied). **Roadmap:** row-level security in Postgres as a second wall, per-tenant encryption keys. |
 | **10K → 1M users** | **What breaks first:** JSON files and one process per key. Fine for a pilot with a few staff keys; not for thousands of guest sessions. **Roadmap:** Postgres for bookings, requests and the audit log (append-only table, `hotel_group_id` in every index); the streamable HTTP transport behind a load balancer with OAuth tokens instead of a process per key; rate limits in Redis; the BM25 index built in CI. |
 | **Monitoring, alerting, hallucination detection** | **Built:** the audit log records every denied, invalid, rate-limited and failed call; `get_audit_log` shows the chain is intact; the eval gates every push. **Roadmap:** alerts on spikes in denied calls or removed instructions (a sign someone is probing), a daily chain check, and key rotation reminders. Hallucination is the client's model; the server's part is returning only grounded, cited data. |
+| **Observability** | **Built (1.2.0, web demo):** every question is one trace (OpenTelemetry-shaped IDs) with a span per model turn and per MCP call (role, arguments, ok), written to the shared `ops_request_log` / `ops_trace_span` tables with the other hotel apps (PII removed first, batched, 30-day retention). Errors show "Reference: 4f1c9a2e"; the hidden Admin page finds it and draws the waterfall. Server side: the hash-chained audit log of every tool call. **Roadmap:** an OpenTelemetry exporter for the server itself. |
 | **Failure modes and rollback** | **Built:** an unexpected error returns "internal error" (never a trace) and is audited; bad arguments are refused with a safe message; a rate-limited key gets a clear error. Rollback: the server holds no migrations; run the previous tag. Key compromise: re-run `make_keys.py` (all old keys stop working). Audit retention and key rotation: [docs/AUTH.md](docs/AUTH.md). |
 
 ## Run locally
@@ -308,8 +309,18 @@ check, lychee link check and gitleaks.
 
 ## Security
 
-[SECURITY.md](SECURITY.md): threat model and OWASP Top 10 for LLM applications mapping. Keys are never stored, only
-their hashes; `.hotel-mcp/` and `.env*` are git-ignored.
+**Guardrails and red team (1.2.0):** the web demo checks each question with the shared guardrails from
+[hotel-ai-platform](https://github.com/vamsialladev/hotel-ai-platform) before any model turn, and answers against the
+turn's MCP results. The server's quarantine also uses the shared patterns, after two red-team cases got past its own
+list (an instruction addressed to "Assistant," inside a policy passage). **Red team**
+([docs/RED_TEAM.md](docs/RED_TEAM.md), in CI): the shared corpus passes 48/48 (three documented differences: no
+promise or citation wording checks, because RBAC decides what a role can do). This repo's 15 held-out cases passed
+13/15 on the first run and 14/15 after the fix. The one left is a front desk agent claiming authority; the server's
+$50 limit stops it. The tool layer refuses a guest's credit, another guest's or hotel group's booking, and an
+auditor's write.
+
+[SECURITY.md](SECURITY.md): STRIDE threat model, OWASP Top 10 for LLM applications mapping, data classification and
+incident response. Keys are never stored, only their hashes; `.hotel-mcp/` and `.env*` are git-ignored.
 
 ## Documentation
 

@@ -106,3 +106,36 @@ Each: context, decision, tradeoff, result.
 - **Tradeoff:** a sentence that promises and negates something else ("Your credit is approved, no action needed")
   would be missed. None appeared in 84 answers; the test list grows when one does.
 - **Result:** the saved second run re-scored without the model: 65/66 → 66/66; held-out unchanged at 18/18.
+
+## 12. The web demo gets the shared guardrails, tracing and an Admin page; the server stays standalone (2026-10-25)
+- **Context:** the final plan adds guardrails, a red team, tracing, one ops log and an Admin page to every live app.
+  This repo is two things: an MCP server people install, and a web demo around it.
+- **Decision:** the web demo wires hotel-ai-platform v0.1.3 (`src/hotel_tools/demo/ops.py`): input check before any
+  model turn, output check against the turn's MCP results (contact details only; promise wording is off because the
+  server's RBAC and credit limits decide what a role can do), one trace per question, an Admin page behind
+  `ADMIN_PASSWORD`. The server's quarantine uses the shared patterns only if the package is installed.
+- **Trade-off:** a bare MCP install keeps the narrower pattern list. Documented in SECURITY.md.
+- **Result:** red team shared 48/48 (three documented overrides); own 15 held-out cases 13/15 first run, 14/15 after
+  the quarantine fix; the 67 real texts the server returns are identical before and after.
+
+## 13. Staff-only documents are left out of search_policy for the guest role (2026-10-26)
+- **Context:** connecting the stage 6 concierge as a guest showed `search_policy` returning a passage that starts
+  "CONFIDENTIAL - INTERNAL STAFF USE ONLY" (the Mountain Lodge events policy). Stage 1 is a staff tool and indexes
+  every document on purpose; this server also answers guests.
+- **Decision:** `rbac.STAFF_ONLY_SOURCES` lists the staff documents (the events policy, the front desk notes, the
+  housekeeping procedure). For a guest, `search_policy` asks for twice the usual number of passages, drops those,
+  and keeps the usual 5. Staff roles run exactly the stage 1 search. A test reads every raw document and fails if one
+  marked confidential or internal isn't listed.
+- **Trade-off:** document level, not section level: a guest can't see the housekeeping procedure's guest-facing
+  lines either. A new staff document must be added to the list (the marker test catches the marked ones only).
+- **Result:** the guest gets no staff-only passage for an events question; front desk still does. Policy eval dev
+  and held-out unchanged (100%, 3 runs).
+
+## 14. The first search's index build prints to stderr, never stdout (2026-10-26)
+- **Context:** the agent protocols lab started this server over stdio from a fresh install. The first
+  `search_policy` built the policy index and printed "Reading documents from ..." to stdout, which over stdio is the
+  MCP JSON-RPC stream; the client logged an invalid message. The source checkout never showed it because its index
+  is already built.
+- **Decision:** the lazy build in `tools.search_policy` runs with stdout redirected to stderr.
+- **Trade-off:** none worth noting; stderr is where an MCP server's logs belong.
+- **Result:** a test fails without the change and passes with it.

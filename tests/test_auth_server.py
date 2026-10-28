@@ -105,3 +105,18 @@ def test_make_keys_script(tmp_path):
     stored = json.loads((tmp_path / "keys.json").read_text(encoding="utf-8"))
     assert set(shown) == {"GUEST", "FRONT_DESK", "MANAGER", "AUDITOR", "FRONT_DESK_HG_OTHER"}
     assert len(stored) == 5 and not any(k in json.dumps(stored) for k in shown.values())
+
+
+def test_building_the_policy_index_never_writes_to_stdout(make_ctx, monkeypatch, capsys):
+    """Over stdio, stdout is the MCP stream: the first search's index build must print to stderr only."""
+    from hotel_tools.policy import ingest
+
+    monkeypatch.setattr(ingest, "index_is_current", lambda *a, **k: False)
+    monkeypatch.setattr(ingest, "build_index", lambda **k: print("Reading documents from ..."))
+    ctx = make_ctx("guest")
+    ctx.retriever = None  # the fixture shares a built retriever; this test needs the first-search path
+    from hotel_tools.tools import search_policy
+
+    search_policy(ctx, "Can I bring my dog?", "beach-resort")  # the checkout's index exists, so the search still works
+    out = capsys.readouterr()
+    assert out.out == "" and "Reading documents" in out.err
